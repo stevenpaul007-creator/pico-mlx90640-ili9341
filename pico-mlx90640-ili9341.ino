@@ -94,7 +94,7 @@ void changeMaxTemp() {
   buttonRight = false;
   maxtemp += 100;
   if (maxtemp > 1000) {
-    maxtemp = DEF_MAXTEMP;
+    maxtemp = DEF_MAXTEMP - 300;
   }
 }
 
