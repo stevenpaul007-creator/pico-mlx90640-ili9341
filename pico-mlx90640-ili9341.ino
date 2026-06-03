@@ -27,8 +27,8 @@ Adafruit_MLX90640 MLX90640;
 float frame[PIXEL_COUNT];
 uint16_t readyBuffer[PIXEL_COUNT];
 
-#define DEF_MINTEMP 150  // 实际是15度
-#define DEF_MAXTEMP 700  // 实际是50度
+#define DEF_MINTEMP 200  // 实际是15度
+#define DEF_MAXTEMP 400  // 实际是50度
 
 uint16_t mintemp = DEF_MINTEMP;
 uint16_t maxtemp = DEF_MAXTEMP;
@@ -36,8 +36,9 @@ uint16_t minmaxtempdif = maxtemp - mintemp;
 
 
 //the colors we will be using
-uint16_t camColors[256] =
-{ 0x480F, 0x400F, 0x400F, 0x400F, 0x4010, 0x3810, 0x3810, 0x3810, 0x3810, 0x3010, 0x3010,
+uint16_t camColors[256] ;
+/*=
+  { 0x480F, 0x400F, 0x400F, 0x400F, 0x4010, 0x3810, 0x3810, 0x3810, 0x3810, 0x3010, 0x3010,
   0x3010, 0x2810, 0x2810, 0x2810, 0x2810, 0x2010, 0x2010, 0x2010, 0x1810, 0x1810,
   0x1811, 0x1811, 0x1011, 0x1011, 0x1011, 0x0811, 0x0811, 0x0811, 0x0011, 0x0011,
   0x0011, 0x0011, 0x0011, 0x0031, 0x0031, 0x0051, 0x0072, 0x0072, 0x0092, 0x00B2,
@@ -63,8 +64,8 @@ uint16_t camColors[256] =
   0xEB20, 0xEB00, 0xEAE0, 0xEAC0, 0xEAA0, 0xEA80, 0xEA60, 0xEA40, 0xF220, 0xF200,
   0xF1E0, 0xF1C0, 0xF1A0, 0xF180, 0xF160, 0xF140, 0xF100, 0xF0E0, 0xF0C0, 0xF0A0,
   0xF080, 0xF060, 0xF040, 0xF020, 0xF800,
-};
-
+  };
+*/
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft);
 
@@ -94,7 +95,7 @@ void changeMaxTemp() {
   buttonRight = false;
   maxtemp += 100;
   if (maxtemp > 1000) {
-    maxtemp = DEF_MAXTEMP - 300;
+    maxtemp = DEF_MAXTEMP;
   }
 }
 
@@ -108,23 +109,80 @@ void checkSerialToBootloader() {
   if (Serial.available() > 0) {
     char incomingChar = Serial.read(); // 读取输入的字符
 
-    // 如果收到字符 'r'
-    if (incomingChar == 'r') {
+    // 如果收到字符 'b'
+    if (incomingChar == 'b') {
       Serial.println("Rebooting into Bootloader mode...");
       // 核心函数：直接重启并进入 BOOTSEL 模式
       rp2040.rebootToBootloader();
     }
+    // r, 重启
+    else if (incomingChar == 'r') {
+      rp2040.reboot();
+    }
     // d, 输出文件表格
     else if (incomingChar == 'd') {
-      Serial.println("$$");
+      Serial.print("$$ ");
       for (size_t i = 0; i < PIXEL_COUNT; i++) {
         Serial.printf("%.1f ", frame[i]);
       }
+      Serial.println();
     }
     // h, 输出帮助信息
     else if (incomingChar == 'h') {
-      Serial.println("h for help; d for data; r for bootloader");
+      Serial.println("h for help; d for data; b for bootloader; r for reboot");
     }
+  }
+}
+
+// 将 HSV 转换为 RGB565
+uint16_t HSVtoRGB565(float h, float s, float v) {
+  // h: 0-360, s: 0-1, v: 0-1
+  float c = v * s;
+  float x = c * (1 - fabs(fmod(h / 60.0, 2) - 1));
+  float m = v - c;
+  float r, g, b;
+  if (h < 60) {
+    r = c;
+    g = x;
+    b = 0;
+  }
+  else if (h < 120) {
+    r = x;
+    g = c;
+    b = 0;
+  }
+  else if (h < 180) {
+    r = 0;
+    g = c;
+    b = x;
+  }
+  else if (h < 240) {
+    r = 0;
+    g = x;
+    b = c;
+  }
+  else if (h < 300) {
+    r = x;
+    g = 0;
+    b = c;
+  }
+  else {
+    r = c;
+    g = 0;
+    b = x;
+  }
+  r = (r + m) * 255;
+  g = (g + m) * 255;
+  b = (b + m) * 255;
+  // RGB565 转换
+  return ((uint16_t)(r / 8) << 11) | ((uint16_t)(g / 4) << 5) | (uint16_t)(b / 8);
+}
+
+void generateColorMap() {
+  for (int i = 0; i < 256; i++) {
+    // 色相从 240°（蓝）线性递减到 0°（红）
+    float hue = 240.0f - (240.0f * i / 255.0f);
+    camColors[i] = HSVtoRGB565(hue, 1.0, 1.0);
   }
 }
 
@@ -312,6 +370,7 @@ void loop() {
 }
 
 void setup1() {
+  generateColorMap();
   while (!core0inited) {
     delay(10);
   }
