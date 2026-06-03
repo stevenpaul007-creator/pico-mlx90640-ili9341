@@ -27,8 +27,8 @@ Adafruit_MLX90640 MLX90640;
 float frame[PIXEL_COUNT];
 uint16_t readyBuffer[PIXEL_COUNT];
 
-#define DEF_MINTEMP 200  // 实际是15度
-#define DEF_MAXTEMP 400  // 实际是50度
+#define DEF_MINTEMP 200  // 实际是20度
+#define DEF_MAXTEMP 600  // 实际是60度
 
 uint16_t mintemp = DEF_MINTEMP;
 uint16_t maxtemp = DEF_MAXTEMP;
